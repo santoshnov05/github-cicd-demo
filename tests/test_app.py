@@ -11,7 +11,7 @@ def test_home():
     data = response.get_json()
 
     assert data["success"] is True
-
+    
 
 def test_health():
     client = app.test_client()
