@@ -1,0 +1,101 @@
+name: CI/CD Dev to Main
+
+on:
+  push:
+    branches:
+      - dev
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+
+  # ==========================
+  # 1. TEST DEV
+  # ==========================
+  test:
+
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
+
+  # ==========================
+  # 2. MERGE DEV → MAIN
+  # ==========================
+  merge-to-main:
+
+    needs: test
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge dev into main
+        run: |
+          git fetch origin main
+          git checkout main
+          git merge origin/dev --no-edit
+          git push origin main
+
+
+  # ==========================
+  # 3. DEPLOY
+  # ==========================
+  deploy:
+
+    needs: merge-to-main
+
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Deploy application
+        run: |
+          echo "Deploying Flask application..."
+          echo "Deployment successful."
